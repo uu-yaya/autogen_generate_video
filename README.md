@@ -1,146 +1,134 @@
-# AutoGen 短视频生成系统
+# AutoGen Short Video Generator
 
-这是一个基于AutoGen多智能体系统的自动化短视频生成工具。该系统能够自动生成包含图像、语音和字幕的短视频，特别适合制作YouTube Shorts风格的短视频内容。
+基于 AutoGen 多智能体工作流的短视频自动生成项目。输入一个主题后，系统会按顺序生成：
 
-## 系统流程图
+1. 脚本与字幕
+2. 配音
+3. 图片
+4. 合成视频（带字幕与背景音乐）
+
+默认输出文件为 `yt_shorts_video2.mp4`。
+
+## 工作流
 
 ```mermaid
 graph TD
-    A[用户输入] --> B[脚本编写者]
-    B -->|生成脚本| C{脚本生成完成?}
-    C -->|是| D[配音演员]
-    C -->|否| B
-    D -->|生成语音| E{语音生成完成?}
-    E -->|是| F[图形设计师]
-    E -->|否| D
-    F -->|生成图像| G{图像生成完成?}
-    G -->|是| H[导演]
-    G -->|否| F
-    H -->|合成视频| I{视频生成完成?}
-    I -->|是| J[输出视频文件]
-    I -->|否| H
-
-    subgraph 脚本编写者
-    B1[接收用户输入] --> B2[生成视频主题]
-    B2 --> B3[创建字幕列表]
-    B3 --> B4[输出JSON格式脚本]
-    end
-
-    subgraph 配音演员
-    D1[接收字幕列表] --> D2[调用豆包TTS API]
-    D2 --> D3[生成语音文件]
-    D3 --> D4[保存语音文件]
-    end
-
-    subgraph 图形设计师
-    F1[接收字幕列表] --> F2[生成图像提示]
-    F2 --> F3[调用Pollinations.AI API]
-    F3 --> F4[生成并保存图像]
-    end
-
-    subgraph 导演
-    H1[接收所有素材] --> H2[处理字幕]
-    H2 --> H3[同步音视频]
-    H3 --> H4[添加背景音乐]
-    H4 --> H5[生成最终视频]
-    end
-
+    A["用户输入主题"] --> B["script_writer 生成结构化脚本"]
+    B --> C["voice_actor 生成配音"]
+    C --> D["graphic_designer 生成图片"]
+    D --> E["director 合成视频"]
+    E --> F["输出 yt_shorts_video2.mp4"]
 ```
 
+## 项目结构
 
-## 功能特点
+```text
+autogen_generate_video/
+├── main.py                 # 多智能体入口
+├── tools.py                # 语音/图片/视频工具函数
+├── requirements.txt        # Python 依赖（UTF-16 LE 编码）
+├── music/                  # 背景音乐目录
+├── images/                 # 图片输出目录
+├── voiceovers/             # 配音输出目录
+├── autogen_study/          # AutoGen 学习示例
+└── README.md
+```
 
-- 🤖 多智能体协作：使用多个专门的AI智能体协同工作
-- 📝 自动脚本生成：根据用户输入自动生成视频脚本
-- 🎨 AI图像生成：自动为每个场景生成匹配的图像
-- 🗣️ 语音合成：自动生成专业的画外音
-- 🎬 视频合成：自动将图像、语音和字幕合成为完整的视频
-- 🎵 背景音乐：支持添加背景音乐增强视频效果
+## 运行环境
 
-## 系统架构
+- Python 3.10+
+- FFmpeg（必须在 PATH 中可执行）
+- 可访问以下外部服务：
+  - DashScope 兼容 OpenAI 接口（脚本与翻译）
+  - 豆包 TTS（配音）
+  - Pollinations 图像接口（出图）
 
-系统由以下四个主要智能体组成：
-
-1. **脚本编写者 (Script Writer)**
-   - 负责生成视频脚本
-   - 创建引人入胜的字幕
-   - 确保内容的连贯性和吸引力
-
-2. **配音演员 (Voice Actor)**
-   - 负责生成画外音
-   - 使用豆包TTS API生成自然流畅的语音
-
-3. **图形设计师 (Graphic Designer)**
-   - 负责生成视频所需的图像
-   - 使用Pollinations.AI API创建高质量图像
-   - 确保图像与字幕内容相匹配
-
-4. **导演 (Director)**
-   - 负责最终的视频合成
-   - 协调图像、语音和字幕的同步
-   - 添加背景音乐和特效
-
-## 安装说明
-1.安装依赖：
+## 安装
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-2. 配置环境变量：
-创建 `.env` 文件并添加以下配置：
-但是如果相关变量已在系统环境变量中配置，则相关变量可以不用配置。
-```
-DASHSCOPE_API_KEY=你的API密钥
-API_BASE_URL=API基础URL
-APPID=豆包TTS的APPID
-ACCESS_TOKEN=豆包TTS的访问令牌
+如果 `pip install -r requirements.txt` 因编码失败（该文件当前是 UTF-16 LE），可先转成 UTF-8：
+
+```bash
+iconv -f UTF-16LE -t UTF-8 requirements.txt > requirements.utf8.txt
+pip install -r requirements.utf8.txt
 ```
 
-## 使用方法
+## 环境变量
 
-1. 运行主程序：
+在项目根目录创建 `.env`：
+
+```env
+# DashScope (OpenAI compatible)
+DASHSCOPE_API_KEY=your_dashscope_api_key
+API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# Doubao TTS
+DOUBAO_APPID=your_doubao_appid
+DOUBAO_ACCESS_TOKEN=your_doubao_access_token
+```
+
+说明：
+
+- `tools.py` 中豆包变量名是 `DOUBAO_APPID` 和 `DOUBAO_ACCESS_TOKEN`。
+- 旧文档中出现的 `APPID` / `ACCESS_TOKEN` 与代码不一致，请以本 README 为准。
+
+## 使用方式
+
 ```bash
 python main.py
 ```
 
-2. 在提示符下输入你想要制作视频的主题或内容。
+运行后输入主题，例如：
 
-3. 系统会自动：
-   - 生成视频脚本
-   - 创建匹配的图像
-   - 生成画外音
-   - 合成最终视频
-
-4. 生成的视频将保存为 `yt_shorts_video2.mp4`
-
-## 目录结构
-
-```
-autogen_generate_video/
-├── main.py              # 主程序入口
-├── tools.py            # 工具函数集合
-├── requirements.txt    # 项目依赖
-├── music/             # 背景音乐文件夹
-├── images/            # 生成的图像存储
-├── voiceovers/        # 生成的语音文件存储
-├── autogen_study/     # AgentChat核心概念学习代码文件夹
-└── README.md          # 项目说明文档
-
+```text
+如何在 60 秒内解释黑洞蒸发
 ```
 
-## 注意事项
+生成结果：
 
-1. 确保有足够的磁盘空间用于存储生成的媒体文件
-2. 需要稳定的网络连接以访问各种API服务
-3. 视频生成过程可能需要几分钟时间，请耐心等待
-4. 建议使用Python 3.8或更高版本
+- `images/image_*.jpg`
+- `voiceovers/voiceover_*.mp3`
+- `yt_shorts_video2.mp4`
 
-## 依赖项
+## 我对项目的审视结论
 
-- autogen-agentchat
-- autogen-ext[openai]
-- elevenlabs
-- python-dotenv
-- requests
-- numpy
+以下是当前版本最关键的风险点（建议优先处理）：
+
+1. 图像接口鉴权问题  
+   `tools.py` 当前写死了一个 Pollinations token。实测接口会返回 `401 UNAUTHORIZED` 时，图片不会生成。
+
+2. 图像失败不会中断流程  
+   `generate_images` 在失败时仅打印错误，不抛出异常，后续视频阶段可能出现“素材数量不匹配”或空目录问题。
+
+3. 文档和代码曾不一致  
+   环境变量命名存在历史偏差（`APPID` vs `DOUBAO_APPID`），已在本 README 修正。
+
+## 故障排查
+
+### 1) 图片目录为空
+
+- 先看运行日志是否出现 `HTTP状态码 401` 或网络错误。
+- 检查是否能访问 `https://gen.pollinations.ai`。
+- 确认你使用的是可用 API key（当前代码是硬编码方式）。
+
+### 2) 报 `ffmpeg: command not found`
+
+- macOS: `brew install ffmpeg`
+- Ubuntu/Debian: `sudo apt-get install ffmpeg`
+- Windows: 安装 FFmpeg 并加入 PATH
+
+### 3) 字体显示异常
+
+项目默认使用 `SimHei.ttf`/系统中文字体。若 drawtext 报错，请在 `tools.py` 中调整 `fontfile` 为本机有效路径。
+
+## 后续改进建议
+
+- 将 Pollinations API key 改为环境变量（避免硬编码）。
+- 图片生成失败时抛异常并停止工作流。
+- 为语音/图片/视频步骤补充最小化集成测试。
+
